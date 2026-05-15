@@ -1,0 +1,6 @@
+# Local editor and Office temporary files
+~$*.docx
+
+# OS metadata
+Thumbs.db
+.DS_Store
