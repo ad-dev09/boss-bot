@@ -5,8 +5,20 @@ import { notFound } from "../../utils/httpError.js";
 import type { CreateTaskInput, UpdateTaskInput } from "./task.validation.js";
 
 const taskRelations = {
-  project: true,
-  assignedTo: true,
+  project: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
+  assignedTo: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+    },
+  },
 };
 
 const incompleteTaskStatuses = {

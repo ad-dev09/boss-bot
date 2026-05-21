@@ -5,12 +5,11 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const reportsRouter = Router();
 
-reportsRouter.get(
-  "/",
-  asyncHandler(async (_req, res) => {
-    const report = await generateManagerReport();
+const getManagerReport = asyncHandler(async (_req, res) => {
+  const report = await generateManagerReport();
 
-    res.json({ data: { report } });
-  }),
-);
+  res.json({ data: { report } });
+});
 
+reportsRouter.get("/", getManagerReport);
+reportsRouter.get("/manager", getManagerReport);
