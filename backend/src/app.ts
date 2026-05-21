@@ -1,4 +1,4 @@
-import cors from "cors";
+import cors, { type CorsOptions } from "cors";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -20,13 +20,37 @@ import { prisma } from "./lib/prisma.js";
 
 export const app = express();
 
+const corsOptions: CorsOptions = {
+  origin(origin, callback) {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    const allowsAnyOrigin = env.CORS_ORIGINS.includes("*");
+    const isAllowedExact = env.CORS_ORIGINS.includes(origin);
+    const isVercelPreview =
+      env.NODE_ENV === "production" && /\.vercel\.app$/.test(origin);
+
+    if (allowsAnyOrigin || isAllowedExact || isVercelPreview) {
+      callback(null, true);
+      return;
+    }
+
+    if (env.NODE_ENV === "development") {
+      console.warn(`CORS blocked origin: ${origin}`);
+    }
+
+    callback(new Error(`CORS blocked origin: ${origin}`));
+  },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: false,
+};
+
 app.use(helmet());
-app.use(
-  cors({
-    origin: env.CORS_ORIGINS.includes("*") ? "*" : env.CORS_ORIGINS,
-    credentials: !env.CORS_ORIGINS.includes("*"),
-  }),
-);
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 app.use(express.json());
 app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 
