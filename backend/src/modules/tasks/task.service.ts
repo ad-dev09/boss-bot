@@ -1,8 +1,8 @@
-import { TaskStatus } from "../../../generated/prisma/client.ts";
-import { prisma } from "../../config/prisma.ts";
-import { getTodayRange } from "../../utils/dates.ts";
-import { notFound } from "../../utils/httpError.ts";
-import type { CreateTaskInput, UpdateTaskInput } from "./task.validation.ts";
+import { TaskStatus } from "@prisma/client";
+import { prisma } from "../../config/prisma.js";
+import { getTodayRange } from "../../utils/dates.js";
+import { notFound } from "../../utils/httpError.js";
+import type { CreateTaskInput, UpdateTaskInput } from "./task.validation.js";
 
 const taskRelations = {
   project: true,

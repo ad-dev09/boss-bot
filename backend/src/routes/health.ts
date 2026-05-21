@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { asyncHandler } from "../utils/asyncHandler.ts";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const healthRouter = Router();
 

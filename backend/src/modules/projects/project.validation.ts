@@ -5,7 +5,7 @@ import {
   optionalDecimalInputSchema,
   prioritySchema,
   projectStatusSchema,
-} from "../shared/validation.ts";
+} from "../shared/validation.js";
 
 export const createProjectSchema = z.object({
   name: z.string().trim().min(1),

@@ -1,7 +1,7 @@
-import { Prisma } from "../../../generated/prisma/client.ts";
-import { prisma } from "../../config/prisma.ts";
-import { notFound } from "../../utils/httpError.ts";
-import type { CreateProjectInput, UpdateProjectInput } from "./project.validation.ts";
+import { Prisma } from "@prisma/client";
+import { prisma } from "../../config/prisma.js";
+import { notFound } from "../../utils/httpError.js";
+import type { CreateProjectInput, UpdateProjectInput } from "./project.validation.js";
 
 const projectRelations = {
   tasks: true,

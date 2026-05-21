@@ -1,9 +1,9 @@
-import { prisma } from "../../config/prisma.ts";
-import { notFound } from "../../utils/httpError.ts";
+import { prisma } from "../../config/prisma.js";
+import { notFound } from "../../utils/httpError.js";
 import type {
   CreateProviderInput,
   UpdateProviderInput,
-} from "./provider.validation.ts";
+} from "./provider.validation.js";
 
 const providerRelations = {
   payments: true,

@@ -1,12 +1,12 @@
 import { Router } from "express";
 
-import { paymentService } from "../modules/payments/payment.service.ts";
+import { paymentService } from "../modules/payments/payment.service.js";
 import {
   createPaymentSchema,
   updatePaymentSchema,
-} from "../modules/payments/payment.validation.ts";
-import { idParamSchema } from "../modules/shared/validation.ts";
-import { asyncHandler } from "../utils/asyncHandler.ts";
+} from "../modules/payments/payment.validation.js";
+import { idParamSchema } from "../modules/shared/validation.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const paymentsRouter = Router();
 

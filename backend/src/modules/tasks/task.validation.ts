@@ -4,7 +4,7 @@ import {
   nullableDateSchema,
   prioritySchema,
   taskStatusSchema,
-} from "../shared/validation.ts";
+} from "../shared/validation.js";
 
 export const createTaskSchema = z.object({
   title: z.string().trim().min(1),

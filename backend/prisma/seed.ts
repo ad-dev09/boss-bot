@@ -1,7 +1,6 @@
 import "dotenv/config";
 
-import { PrismaPg } from "@prisma/adapter-pg";
-
+import bcrypt from "bcryptjs";
 import {
   PaymentStatus,
   Priority,
@@ -10,21 +9,30 @@ import {
   ProjectStatus,
   TaskStatus,
   UserRole,
-} from "../generated/prisma/client.ts";
+} from "@prisma/client";
 
 const databaseUrl = process.env.DATABASE_URL;
+const adminEmail = process.env.ADMIN_EMAIL?.trim();
+const adminName = process.env.ADMIN_NAME?.trim();
+const adminPassword = process.env.ADMIN_PASSWORD?.trim();
 
 if (!databaseUrl) {
   throw new Error("DATABASE_URL is required to seed the database.");
 }
 
-const adapter = new PrismaPg({
-  connectionString: databaseUrl,
-});
+if (!adminEmail) {
+  throw new Error("ADMIN_EMAIL is required to seed the admin user.");
+}
 
-const prisma = new PrismaClient({
-  adapter,
-});
+if (!adminPassword) {
+  throw new Error("ADMIN_PASSWORD is required to seed the admin user.");
+}
+
+if (!adminName) {
+  throw new Error("ADMIN_NAME is required to seed the admin user.");
+}
+
+const prisma = new PrismaClient();
 
 const ids = {
   adminUser: "11111111-1111-4111-8111-111111111111",
@@ -37,14 +45,22 @@ const ids = {
 };
 
 async function main() {
+  const passwordHash = await bcrypt.hash(adminPassword, 12);
+
   const [adminUser, managerUser] = await Promise.all([
     prisma.user.upsert({
       where: { id: ids.adminUser },
-      update: {},
+      update: {
+        email: adminEmail,
+        name: adminName,
+        passwordHash,
+        role: UserRole.ADMIN,
+      },
       create: {
         id: ids.adminUser,
-        name: "Adrian Manager",
-        email: "adrian.manager@example.com",
+        name: adminName,
+        email: adminEmail,
+        passwordHash,
         telegramUserId: "100000001",
         role: UserRole.ADMIN,
       },

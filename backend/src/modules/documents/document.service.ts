@@ -1,9 +1,9 @@
-import { prisma } from "../../config/prisma.ts";
-import { notFound } from "../../utils/httpError.ts";
+import { prisma } from "../../config/prisma.js";
+import { notFound } from "../../utils/httpError.js";
 import type {
   CreateDocumentInput,
   UpdateDocumentInput,
-} from "./document.validation.ts";
+} from "./document.validation.js";
 
 const documentRelations = {
   project: true,

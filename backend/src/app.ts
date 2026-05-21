@@ -3,34 +3,55 @@ import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 
-import { env } from "./config/env.ts";
-import { errorHandler } from "./middleware/errorHandler.ts";
-import { notFoundHandler } from "./middleware/notFoundHandler.ts";
-import { documentsRouter } from "./routes/documents.ts";
-import { healthRouter } from "./routes/health.ts";
-import { paymentsRouter } from "./routes/payments.ts";
-import { projectsRouter } from "./routes/projects.ts";
-import { providersRouter } from "./routes/providers.ts";
-import { tasksRouter } from "./routes/tasks.ts";
+import { env } from "./config/env.js";
+import { errorHandler } from "./middleware/errorHandler.js";
+import { notFoundHandler } from "./middleware/notFoundHandler.js";
+import { requireAuth } from "./middleware/requireAuth.js";
+import { authRouter } from "./routes/auth.js";
+import { documentsRouter } from "./routes/documents.js";
+import { healthRouter } from "./routes/health.js";
+import { paymentsRouter } from "./routes/payments.js";
+import { projectsRouter } from "./routes/projects.js";
+import { providersRouter } from "./routes/providers.js";
+import { tasksRouter } from "./routes/tasks.js";
+import { prisma } from "./lib/prisma.js";
 
 export const app = express();
 
 app.use(helmet());
 app.use(
   cors({
-    origin: env.CORS_ORIGIN,
-    credentials: env.CORS_ORIGIN !== "*",
+    origin: env.CORS_ORIGINS.includes("*") ? "*" : env.CORS_ORIGINS,
+    credentials: !env.CORS_ORIGINS.includes("*"),
   }),
 );
 app.use(express.json());
 app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 
 app.use("/health", healthRouter);
-app.use("/api/projects", projectsRouter);
-app.use("/api/tasks", tasksRouter);
-app.use("/api/payments", paymentsRouter);
-app.use("/api/providers", providersRouter);
-app.use("/api/documents", documentsRouter);
+app.use("/api/auth", authRouter);
+app.use("/api/projects", requireAuth, projectsRouter);
+app.use("/api/tasks", requireAuth, tasksRouter);
+app.use("/api/payments", requireAuth, paymentsRouter);
+app.use("/api/providers", requireAuth, providersRouter);
+app.use("/api/documents", requireAuth, documentsRouter);
+
+app.get("/db-test", async (_req, res) => {
+  try {
+    const result = await prisma.$queryRaw`select now()`;
+
+    res.json({
+      status: "connected",
+      databaseTime: result,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      status: "error",
+      message: "Could not connect to database",
+    });
+  }
+});
 
 app.use(notFoundHandler);
 app.use(errorHandler);

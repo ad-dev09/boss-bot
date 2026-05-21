@@ -4,7 +4,7 @@ import {
   decimalInputSchema,
   nullableDateSchema,
   paymentStatusSchema,
-} from "../shared/validation.ts";
+} from "../shared/validation.js";
 
 export const createPaymentSchema = z.object({
   description: z.string().trim().min(1),

@@ -4,14 +4,14 @@
     "lib": ["ES2022"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
-    "noEmit": true,
+    "outDir": "dist",
+    "rootDir": "src",
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true
   },
-  "include": ["src/**/*.ts", "prisma/**/*.ts", "prisma.config.ts", "generated/prisma/**/*.ts"]
+  "include": ["src/**/*.ts"]
 }

@@ -1,10 +1,11 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum UserRole {
@@ -48,6 +49,7 @@ model User {
   id             String        @id @default(uuid()) @db.Uuid
   telegramUserId String?       @unique
   email          String?       @unique
+  passwordHash   String?
   name           String
   role           UserRole      @default(VIEWER)
   createdAt      DateTime      @default(now())
@@ -136,14 +138,18 @@ model Document {
   id                String   @id @default(uuid()) @db.Uuid
   title             String
   fileName          String
+  originalName      String?
   fileType          String?
   url               String?
   openaiFileId      String?
   vectorStoreFileId String?
-  projectId         String   @db.Uuid
+  vectorStoreId     String?
+  documentType      String?
+  notes             String?
+  projectId         String?  @db.Uuid
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
-  project           Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project           Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   @@index([projectId])
   @@map("documents")
@@ -153,10 +159,10 @@ model ActivityLog {
   id        String   @id @default(uuid()) @db.Uuid
   action    String
   details   Json?
-  projectId String   @db.Uuid
+  projectId String?  @db.Uuid
   userId    String?  @db.Uuid
   createdAt DateTime @default(now())
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([projectId])

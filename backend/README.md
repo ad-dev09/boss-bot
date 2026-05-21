@@ -60,6 +60,32 @@ Node.js, Express, TypeScript, and Prisma backend for the ManagerOps AI Assistant
 
 Secrets must stay in `.env` and should never be hardcoded in source files.
 
+## Admin User Seed
+
+Set temporary admin credentials in your local shell before running the seed. Do not commit these values:
+
+```bash
+ADMIN_EMAIL="adrian@fullspectrumsupplies.com"
+ADMIN_PASSWORD="temporary-password-here"
+ADMIN_NAME="Adrian"
+npx prisma db seed
+```
+
+The seed stores a bcrypt password hash for the admin user and never logs the password.
+
+## Telegram Bot Setup
+
+Add your bot token to `.env`:
+
+```bash
+TELEGRAM_BOT_TOKEN="your_bot_token"
+TELEGRAM_MANAGER_CHAT_ID=""
+```
+
+Start the backend with `npm run dev`, send `/start` to your Telegram bot, then copy the `Telegram chat ID` printed in the terminal. Add that value to `.env` as `TELEGRAM_MANAGER_CHAT_ID`.
+
+When `TELEGRAM_MANAGER_CHAT_ID` is empty, the bot allows messages only in development mode so you can discover your chat ID safely.
+
 ## Prisma Commands
 
 - `npm run prisma:generate` updates the generated Prisma client.

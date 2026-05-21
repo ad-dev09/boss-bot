@@ -1,11 +1,11 @@
-import { PaymentStatus, Prisma } from "../../../generated/prisma/client.ts";
-import { prisma } from "../../config/prisma.ts";
-import { getTodayRange } from "../../utils/dates.ts";
-import { notFound } from "../../utils/httpError.ts";
+import { PaymentStatus, Prisma } from "@prisma/client";
+import { prisma } from "../../config/prisma.js";
+import { getTodayRange } from "../../utils/dates.js";
+import { notFound } from "../../utils/httpError.js";
 import type {
   CreatePaymentInput,
   UpdatePaymentInput,
-} from "./payment.validation.ts";
+} from "./payment.validation.js";
 
 const paymentRelations = {
   project: true,

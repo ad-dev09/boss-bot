@@ -1,12 +1,12 @@
 import { Router } from "express";
 
-import { idParamSchema } from "../modules/shared/validation.ts";
-import { taskService } from "../modules/tasks/task.service.ts";
+import { idParamSchema } from "../modules/shared/validation.js";
+import { taskService } from "../modules/tasks/task.service.js";
 import {
   createTaskSchema,
   updateTaskSchema,
-} from "../modules/tasks/task.validation.ts";
-import { asyncHandler } from "../utils/asyncHandler.ts";
+} from "../modules/tasks/task.validation.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const tasksRouter = Router();
 
