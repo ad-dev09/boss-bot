@@ -8,11 +8,13 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { notFoundHandler } from "./middleware/notFoundHandler.js";
 import { requireAuth } from "./middleware/requireAuth.js";
 import { authRouter } from "./routes/auth.js";
+import { dashboardRouter } from "./routes/dashboard.js";
 import { documentsRouter } from "./routes/documents.js";
 import { healthRouter } from "./routes/health.js";
 import { paymentsRouter } from "./routes/payments.js";
 import { projectsRouter } from "./routes/projects.js";
 import { providersRouter } from "./routes/providers.js";
+import { reportsRouter } from "./routes/reports.js";
 import { tasksRouter } from "./routes/tasks.js";
 import { prisma } from "./lib/prisma.js";
 
@@ -30,11 +32,13 @@ app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 
 app.use("/health", healthRouter);
 app.use("/api/auth", authRouter);
+app.use("/api/dashboard", requireAuth, dashboardRouter);
 app.use("/api/projects", requireAuth, projectsRouter);
 app.use("/api/tasks", requireAuth, tasksRouter);
 app.use("/api/payments", requireAuth, paymentsRouter);
 app.use("/api/providers", requireAuth, providersRouter);
 app.use("/api/documents", requireAuth, documentsRouter);
+app.use("/api/reports", requireAuth, reportsRouter);
 
 app.get("/db-test", async (_req, res) => {
   try {
