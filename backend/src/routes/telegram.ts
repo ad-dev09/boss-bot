@@ -1,24 +1,11 @@
 import { Router } from "express";
 
+import { commandList } from "../bot/commands.js";
+import { getTelegramCommandSupportMatrix } from "../bot/messageHandler.js";
 import { env } from "../config/env.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const telegramRouter = Router();
-
-const commands = [
-  { command: "/start", description: "Start Jarvis AI Assistant" },
-  { command: "/help", description: "Show available commands" },
-  { command: "/projects", description: "Show active projects" },
-  { command: "/tasks", description: "Show open tasks" },
-  { command: "/payments", description: "Show pending payments" },
-  { command: "/providers", description: "Review provider follow-up" },
-  { command: "/documents", description: "Review document status" },
-  { command: "/today", description: "Show today's priorities" },
-  { command: "/report", description: "Generate manager status report" },
-  { command: "/addtask", description: "Create a task from chat" },
-  { command: "/addpayment", description: "Record a payment reminder" },
-  { command: "/status", description: "Check system status" },
-];
 
 telegramRouter.get(
   "/status",
@@ -40,7 +27,8 @@ telegramRouter.get(
           managerChatId: managerChatConfigured ? "configured" : "missing",
           webhookUrl: webhookConfigured ? "configured" : "missing",
         },
-        commands,
+        commands: commandList,
+        commandSupport: getTelegramCommandSupportMatrix(),
       },
     });
   }),

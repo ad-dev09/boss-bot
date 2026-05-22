@@ -1,47 +1,11 @@
 import { Telegraf } from "telegraf";
 
 import { env } from "../config/env.js";
+import { formatCommandHelp, telegramBotCommands } from "./commands.js";
 import { handleTelegramText } from "./messageHandler.js";
 
-const startMessage = [
-  "Hello Adrian. I am Jarvis AI Assistant.",
-  "",
-  "I can help track:",
-  "- projects",
-  "- tasks",
-  "- payments",
-  "- providers",
-  "- documents",
-  "- daily priorities",
-  "",
-  "Try:",
-  "\"Show pending payments\"",
-  "\"Create a task for tomorrow\"",
-  "\"Summarize active projects\"",
-].join("\n");
-
-const helpMessage = [
-  "Available commands:",
-  "",
-  "/projects - show active projects",
-  "/tasks - show open tasks",
-  "/payments - show pending payments",
-  "/report - generate manager status report",
-  "",
-  "You can also type naturally:",
-  "\"Add task: call supplier tomorrow\"",
-  "\"What payments are overdue?\"",
-  "\"Summarize the FRP grating project\"",
-].join("\n");
-
-const telegramCommands = [
-  { command: "start", description: "Start Jarvis AI Assistant" },
-  { command: "help", description: "Show available commands" },
-  { command: "projects", description: "Show active projects" },
-  { command: "tasks", description: "Show open tasks" },
-  { command: "payments", description: "Show pending payments" },
-  { command: "report", description: "Generate manager status report" },
-];
+let activeBot: Telegraf | null = null;
+let launchInProgress = false;
 
 const replyWithHandler = async (
   text: string,
@@ -84,40 +48,17 @@ export const createTelegramBot = () => {
     await next();
   });
 
-  bot.start(async (ctx) => {
-    await ctx.reply(startMessage);
-  });
+  for (const command of telegramBotCommands) {
+    bot.command(command.command, async (ctx) => {
+      await replyWithHandler(ctx.message.text, ctx.reply.bind(ctx), {
+        chatId: ctx.chat.id,
+        username: ctx.from?.username,
+      });
+    });
+  }
 
   bot.help(async (ctx) => {
-    await ctx.reply(helpMessage);
-  });
-
-  bot.command("projects", async (ctx) => {
-    await replyWithHandler("/projects", ctx.reply.bind(ctx), {
-      chatId: ctx.chat.id,
-      username: ctx.from?.username,
-    });
-  });
-
-  bot.command("tasks", async (ctx) => {
-    await replyWithHandler("/tasks", ctx.reply.bind(ctx), {
-      chatId: ctx.chat.id,
-      username: ctx.from?.username,
-    });
-  });
-
-  bot.command("payments", async (ctx) => {
-    await replyWithHandler("/payments", ctx.reply.bind(ctx), {
-      chatId: ctx.chat.id,
-      username: ctx.from?.username,
-    });
-  });
-
-  bot.command("report", async (ctx) => {
-    await replyWithHandler("/report", ctx.reply.bind(ctx), {
-      chatId: ctx.chat.id,
-      username: ctx.from?.username,
-    });
+    await ctx.reply(formatCommandHelp());
   });
 
   bot.on("message", async (ctx) => {
@@ -140,15 +81,37 @@ export const createTelegramBot = () => {
 };
 
 export const startTelegramBot = async () => {
+  if (activeBot || launchInProgress) {
+    console.warn("Telegram bot startup skipped because a bot instance is already active.");
+    return activeBot;
+  }
+
+  launchInProgress = true;
   const bot = createTelegramBot();
 
   if (!bot) {
+    launchInProgress = false;
     return null;
   }
 
-  await bot.launch();
-  await bot.telegram.setMyCommands(telegramCommands);
-  console.log("Telegram bot is running.");
+  try {
+    await bot.launch();
+    activeBot = bot;
+    await bot.telegram.setMyCommands(telegramBotCommands);
+    console.log("Telegram bot is running.");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    if (message.includes("409")) {
+      console.warn(
+        "Telegram polling conflict detected. Stop duplicate backend/node processes before starting the bot again.",
+      );
+    }
+
+    throw error;
+  } finally {
+    launchInProgress = false;
+  }
 
   return bot;
 };
