@@ -14,6 +14,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().trim().min(1),
   TELEGRAM_BOT_TOKEN: z.string().trim().min(1),
   TELEGRAM_MANAGER_CHAT_ID: z.string().trim().min(1),
+  TELEGRAM_WEBHOOK_URL: z.string().trim().default(""),
   TELEGRAM_ALLOWED_USER_IDS: z.string().trim().default(""),
 });
 

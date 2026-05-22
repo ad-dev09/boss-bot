@@ -21,6 +21,11 @@ export const updateDocumentSchema = createDocumentSchema
   });
 
 export const uploadDocumentSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
   projectId: z
     .string()
     .trim()

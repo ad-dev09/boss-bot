@@ -18,6 +18,15 @@ providersRouter.get(
   }),
 );
 
+providersRouter.get(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = idParamSchema.parse(req.params);
+    const provider = await providerService.getById(id);
+    res.json({ data: provider });
+  }),
+);
+
 providersRouter.post(
   "/",
   asyncHandler(async (req, res) => {
@@ -28,6 +37,16 @@ providersRouter.post(
 );
 
 providersRouter.patch(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = idParamSchema.parse(req.params);
+    const data = updateProviderSchema.parse(req.body);
+    const provider = await providerService.update(id, data);
+    res.json({ message: "Provider updated.", data: provider });
+  }),
+);
+
+providersRouter.put(
   "/:id",
   asyncHandler(async (req, res) => {
     const { id } = idParamSchema.parse(req.params);

@@ -28,6 +28,15 @@ documentsRouter.get(
   }),
 );
 
+documentsRouter.get(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = idParamSchema.parse(req.params);
+    const document = await documentService.getById(id);
+    res.json({ data: document });
+  }),
+);
+
 documentsRouter.post(
   "/upload",
   upload.single("file"),
@@ -46,7 +55,7 @@ documentsRouter.post(
       notes: uploadData.notes,
     });
     const document = await documentService.create({
-      title: req.file.originalname,
+      title: uploadData.title || req.file.originalname,
       fileName: req.file.originalname,
       originalName: req.file.originalname,
       fileType: req.file.mimetype,
@@ -81,6 +90,30 @@ documentsRouter.patch(
     const data = updateDocumentSchema.parse(req.body);
     const document = await documentService.update(id, data);
     res.json({ message: "Document updated.", data: document });
+  }),
+);
+
+documentsRouter.put(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = idParamSchema.parse(req.params);
+    const data = updateDocumentSchema.parse(req.body);
+    const document = await documentService.update(id, data);
+    res.json({ message: "Document updated.", data: document });
+  }),
+);
+
+documentsRouter.get(
+  "/:id/download",
+  asyncHandler(async (req, res) => {
+    const { id } = idParamSchema.parse(req.params);
+    const document = await documentService.getById(id);
+
+    if (!document.url) {
+      throw badRequest("This document does not have a public download URL.");
+    }
+
+    res.redirect(document.url);
   }),
 );
 
