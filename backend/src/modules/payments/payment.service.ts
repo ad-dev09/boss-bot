@@ -8,41 +8,104 @@ import type {
 } from "./payment.validation.js";
 
 const paymentRelations = {
-  project: true,
-  provider: true,
+  project: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
+  provider: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
 };
 
-const toCreatePaymentData = (data: CreatePaymentInput) => ({
-  ...data,
-  amount: new Prisma.Decimal(data.amount),
+type PaymentWithRelations = Prisma.PaymentGetPayload<{
+  include: typeof paymentRelations;
+}>;
+
+const serializePayment = (payment: PaymentWithRelations) => ({
+  ...payment,
+  amount: Number(payment.amount),
 });
 
-const toUpdatePaymentData = (data: UpdatePaymentInput) => ({
-  ...data,
-  amount:
-    data.amount === undefined ? data.amount : new Prisma.Decimal(data.amount),
-});
+const serializePayments = (payments: PaymentWithRelations[]) =>
+  payments.map(serializePayment);
+
+const resolveProviderId = async (data: Pick<CreatePaymentInput, "providerId" | "providerName">) => {
+  if (data.providerId) return data.providerId;
+
+  const providerName = data.providerName?.trim();
+
+  if (!providerName) {
+    throw new Error("providerId or providerName is required.");
+  }
+
+  const existingProvider = await prisma.provider.findFirst({
+    where: { name: providerName },
+    select: { id: true },
+  });
+
+  if (existingProvider) return existingProvider.id;
+
+  const provider = await prisma.provider.create({
+    data: { name: providerName },
+    select: { id: true },
+  });
+
+  return provider.id;
+};
+
+const toCreatePaymentData = async (data: CreatePaymentInput) => {
+  const { providerName: _providerName, providerId: _providerId, ...paymentData } = data;
+  const providerId = await resolveProviderId(data);
+
+  return {
+    ...paymentData,
+    providerId,
+    amount: new Prisma.Decimal(data.amount),
+  };
+};
+
+const toUpdatePaymentData = async (data: UpdatePaymentInput) => {
+  const { providerName: _providerName, providerId, ...paymentData } = data;
+
+  return {
+    ...paymentData,
+    ...(providerId || data.providerName
+      ? { providerId: await resolveProviderId({ providerId, providerName: data.providerName }) }
+      : {}),
+    amount:
+      data.amount === undefined ? data.amount : new Prisma.Decimal(data.amount),
+  };
+};
 
 export const paymentService = {
-  list() {
-    return prisma.payment.findMany({
+  async list() {
+    const payments = await prisma.payment.findMany({
       include: paymentRelations,
       orderBy: { createdAt: "desc" },
     });
+
+    return serializePayments(payments);
   },
 
-  listPending() {
-    return prisma.payment.findMany({
+  async listPending() {
+    const payments = await prisma.payment.findMany({
       where: { status: PaymentStatus.PENDING },
       include: paymentRelations,
       orderBy: { dueDate: "asc" },
     });
+
+    return serializePayments(payments);
   },
 
-  listOverdue() {
+  async listOverdue() {
     const { start } = getTodayRange();
 
-    return prisma.payment.findMany({
+    const payments = await prisma.payment.findMany({
       where: {
         dueDate: {
           lt: start,
@@ -54,6 +117,8 @@ export const paymentService = {
       include: paymentRelations,
       orderBy: { dueDate: "asc" },
     });
+
+    return serializePayments(payments);
   },
 
   async getById(id: string) {
@@ -66,24 +131,28 @@ export const paymentService = {
       throw notFound("Payment");
     }
 
-    return payment;
+    return serializePayment(payment);
   },
 
-  create(data: CreatePaymentInput) {
-    return prisma.payment.create({
-      data: toCreatePaymentData(data),
+  async create(data: CreatePaymentInput) {
+    const payment = await prisma.payment.create({
+      data: await toCreatePaymentData(data),
       include: paymentRelations,
     });
+
+    return serializePayment(payment);
   },
 
   async update(id: string, data: UpdatePaymentInput) {
     await this.getById(id);
 
-    return prisma.payment.update({
+    const payment = await prisma.payment.update({
       where: { id },
-      data: toUpdatePaymentData(data),
+      data: await toUpdatePaymentData(data),
       include: paymentRelations,
     });
+
+    return serializePayment(payment);
   },
 
   async remove(id: string) {

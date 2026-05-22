@@ -6,7 +6,7 @@ import {
   paymentStatusSchema,
 } from "../shared/validation.js";
 
-export const createPaymentSchema = z.object({
+const paymentInputSchema = z.object({
   description: z.string().trim().min(1),
   amount: decimalInputSchema,
   currency: z.string().trim().min(3).max(3).optional(),
@@ -14,10 +14,19 @@ export const createPaymentSchema = z.object({
   dueDate: nullableDateSchema,
   paidAt: nullableDateSchema,
   projectId: z.string().uuid(),
-  providerId: z.string().uuid(),
+  providerId: z.string().uuid().optional(),
+  providerName: z.string().trim().min(1).optional(),
 });
 
-export const updatePaymentSchema = createPaymentSchema
+export const createPaymentSchema = paymentInputSchema.refine(
+  (data) => Boolean(data.providerId || data.providerName),
+  {
+    message: "providerId or providerName is required.",
+    path: ["providerId"],
+  },
+);
+
+export const updatePaymentSchema = paymentInputSchema
   .partial()
   .refine((data) => Object.keys(data).length > 0, {
     message: "At least one field is required.",
