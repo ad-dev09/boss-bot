@@ -64,6 +64,22 @@ export const taskService = {
     });
   },
 
+  listBlocked() {
+    return prisma.task.findMany({
+      where: { status: TaskStatus.BLOCKED },
+      include: taskRelations,
+      orderBy: { dueDate: "asc" },
+    });
+  },
+
+  listCompleted() {
+    return prisma.task.findMany({
+      where: { status: TaskStatus.DONE },
+      include: taskRelations,
+      orderBy: { updatedAt: "desc" },
+    });
+  },
+
   async getById(id: string) {
     const task = await prisma.task.findUnique({
       where: { id },

@@ -12,8 +12,19 @@ export const tasksRouter = Router();
 
 tasksRouter.get(
   "/",
-  asyncHandler(async (_req, res) => {
-    const tasks = await taskService.list();
+  asyncHandler(async (req, res) => {
+    const filter = typeof req.query.filter === "string" ? req.query.filter : "all";
+    const tasks =
+      filter === "today"
+        ? await taskService.listToday()
+        : filter === "overdue"
+          ? await taskService.listOverdue()
+          : filter === "blocked"
+            ? await taskService.listBlocked()
+            : filter === "completed"
+              ? await taskService.listCompleted()
+              : await taskService.list();
+
     res.json({ data: tasks });
   }),
 );
@@ -34,6 +45,31 @@ tasksRouter.get(
   }),
 );
 
+tasksRouter.get(
+  "/blocked",
+  asyncHandler(async (_req, res) => {
+    const tasks = await taskService.listBlocked();
+    res.json({ data: tasks });
+  }),
+);
+
+tasksRouter.get(
+  "/completed",
+  asyncHandler(async (_req, res) => {
+    const tasks = await taskService.listCompleted();
+    res.json({ data: tasks });
+  }),
+);
+
+tasksRouter.get(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = idParamSchema.parse(req.params);
+    const task = await taskService.getById(id);
+    res.json({ data: task });
+  }),
+);
+
 tasksRouter.post(
   "/",
   asyncHandler(async (req, res) => {
@@ -44,6 +80,16 @@ tasksRouter.post(
 );
 
 tasksRouter.patch(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = idParamSchema.parse(req.params);
+    const data = updateTaskSchema.parse(req.body);
+    const task = await taskService.update(id, data);
+    res.json({ message: "Task updated.", data: task });
+  }),
+);
+
+tasksRouter.put(
   "/:id",
   asyncHandler(async (req, res) => {
     const { id } = idParamSchema.parse(req.params);

@@ -17,6 +17,7 @@ import { providersRouter } from "./routes/providers.js";
 import { reportsRouter } from "./routes/reports.js";
 import { tasksRouter } from "./routes/tasks.js";
 import { telegramRouter } from "./routes/telegram.js";
+import { usersRouter } from "./routes/users.js";
 import { prisma } from "./lib/prisma.js";
 
 export const app = express();
@@ -65,6 +66,7 @@ app.use("/api/providers", requireAuth, providersRouter);
 app.use("/api/documents", requireAuth, documentsRouter);
 app.use("/api/reports", requireAuth, reportsRouter);
 app.use("/api/telegram", requireAuth, telegramRouter);
+app.use("/api/users", requireAuth, usersRouter);
 
 app.get("/db-test", async (_req, res) => {
   try {
