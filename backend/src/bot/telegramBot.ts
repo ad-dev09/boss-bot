@@ -16,13 +16,18 @@ const replyWithHandler = async (
 };
 
 export const isAllowedUser = (chatId: number | string) => {
+  const normalizedChatId = String(chatId);
   const managerChatId = env.TELEGRAM_MANAGER_CHAT_ID.trim();
+  const allowedUserIds = new Set([
+    managerChatId,
+    ...env.TELEGRAM_ALLOWED_USER_IDS,
+  ].filter(Boolean));
 
-  if (!managerChatId) {
+  if (allowedUserIds.size === 0) {
     return env.NODE_ENV === "development";
   }
 
-  return String(chatId) === managerChatId;
+  return allowedUserIds.has(normalizedChatId);
 };
 
 export const createTelegramBot = () => {
