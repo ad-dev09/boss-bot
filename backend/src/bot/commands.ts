@@ -1,6 +1,9 @@
 export type TelegramCommandKey =
   | "start"
   | "help"
+  | "guide"
+  | "manual"
+  | "instructions"
   | "projects"
   | "tasks"
   | "payments"
@@ -10,6 +13,8 @@ export type TelegramCommandKey =
   | "report"
   | "addtask"
   | "addpayment"
+  | "addproject"
+  | "addprovider"
   | "status";
 
 export type TelegramCommandDefinition = {
@@ -29,7 +34,25 @@ export const COMMANDS: Record<TelegramCommandKey, TelegramCommandDefinition> = {
   help: {
     key: "help",
     command: "/help",
-    description: "Show all supported commands",
+    description: "Show quick command list",
+    requiresOpenAI: false,
+  },
+  guide: {
+    key: "guide",
+    command: "/guide",
+    description: "Show full user guide",
+    requiresOpenAI: false,
+  },
+  manual: {
+    key: "manual",
+    command: "/manual",
+    description: "Show full user guide",
+    requiresOpenAI: false,
+  },
+  instructions: {
+    key: "instructions",
+    command: "/instructions",
+    description: "Show full user guide",
     requiresOpenAI: false,
   },
   projects: {
@@ -86,6 +109,18 @@ export const COMMANDS: Record<TelegramCommandKey, TelegramCommandDefinition> = {
     description: "Create a payment",
     requiresOpenAI: false,
   },
+  addproject: {
+    key: "addproject",
+    command: "/addproject",
+    description: "Create a project",
+    requiresOpenAI: false,
+  },
+  addprovider: {
+    key: "addprovider",
+    command: "/addprovider",
+    description: "Create a provider",
+    requiresOpenAI: false,
+  },
   status: {
     key: "status",
     command: "/status",
@@ -106,17 +141,3 @@ export const getCommandDefinition = (command: string) => {
 
   return COMMANDS[key];
 };
-
-export const formatCommandHelp = () =>
-  [
-    "Supported commands:",
-    "",
-    ...commandList.map(
-      (definition) => `${definition.command} - ${definition.description}`,
-    ),
-    "",
-    "Examples:",
-    "/tasks overdue",
-    "/addtask Call supplier about warehouse quote | priority high | due 2026-06-15",
-    "/addpayment Fibergrate | amount 2500 | due 2026-06-15",
-  ].join("\n");

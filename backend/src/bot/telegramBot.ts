@@ -1,7 +1,8 @@
 import { Telegraf } from "telegraf";
 
 import { env } from "../config/env.js";
-import { formatCommandHelp, telegramBotCommands } from "./commands.js";
+import { telegramBotCommands } from "./commands.js";
+import { getHelpMessage } from "./helpText.js";
 import { handleTelegramText } from "./messageHandler.js";
 
 let activeBot: Telegraf | null = null;
@@ -12,7 +13,11 @@ const replyWithHandler = async (
   reply: (message: string) => Promise<unknown>,
   source?: { chatId?: number | string; username?: string },
 ) => {
-  await reply(await handleTelegramText(text, source));
+  const responses = await handleTelegramText(text, source);
+
+  for (const response of Array.isArray(responses) ? responses : [responses]) {
+    await reply(response);
+  }
 };
 
 export const isAllowedUser = (chatId: number | string) => {
@@ -63,7 +68,7 @@ export const createTelegramBot = () => {
   }
 
   bot.help(async (ctx) => {
-    await ctx.reply(formatCommandHelp());
+    await ctx.reply(getHelpMessage());
   });
 
   bot.on("message", async (ctx) => {

@@ -12,15 +12,16 @@ import { env } from "../config/env.js";
 import { prisma } from "../config/prisma.js";
 import { paymentService } from "../modules/payments/payment.service.js";
 import { projectService } from "../modules/projects/project.service.js";
+import { providerService } from "../modules/providers/provider.service.js";
 import { generateManagerReport } from "../modules/reports/reportService.js";
 import { taskService } from "../modules/tasks/task.service.js";
 import { getTodayRange } from "../utils/dates.js";
 import {
   commandList,
-  formatCommandHelp,
   getCommandDefinition,
   type TelegramCommandKey,
 } from "./commands.js";
+import { getGuideMessages, getHelpMessage } from "./helpText.js";
 
 type MessageSource = {
   chatId?: number | string;
@@ -28,7 +29,7 @@ type MessageSource = {
 };
 
 type HandlerResult = {
-  response: string;
+  response: string | string[];
   action: string;
   projectId?: string;
 };
@@ -81,6 +82,9 @@ const formatMoney = (
 
 const truncate = (value: string, maxLength = 80) =>
   value.length > maxLength ? `${value.slice(0, maxLength - 3)}...` : value;
+
+const responseText = (response: string | string[]) =>
+  Array.isArray(response) ? response.join("\n\n") : response;
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
@@ -141,10 +145,8 @@ const formatWelcome = () =>
     "I can help you review projects, tasks, payments, providers, documents, and today's priorities.",
     "",
     "Start with:",
-    "/help",
-    "/tasks",
-    "/today",
-    "/report",
+    "Type /help for quick commands.",
+    "Type /guide for full instructions with examples.",
   ].join("\n");
 
 const formatActiveProjects = async () => {
@@ -441,8 +443,7 @@ const findUserByName = async (name: string | undefined) => {
 };
 
 const parseSegments = (args: string) =>
-  args
-    .split("|")
+  (args.includes("|") ? args.split("|") : args.split(/\s*,\s+/))
     .map((segment) => segment.trim())
     .filter(Boolean);
 
@@ -472,6 +473,25 @@ const parseDateValue = (value: string | undefined) => {
     return relativeDate;
   }
 
+  const weekdayNames = [
+    "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+  ];
+  const weekdayIndex = weekdayNames.indexOf(normalized.replace(/^due\s+/i, ""));
+
+  if (weekdayIndex >= 0) {
+    const daysAhead = (weekdayIndex - relativeDate.getDay() + 7) % 7 || 7;
+
+    relativeDate.setDate(relativeDate.getDate() + daysAhead);
+    relativeDate.setHours(9, 0, 0, 0);
+    return relativeDate;
+  }
+
   const parsedDate = new Date(value);
 
   return Number.isNaN(parsedDate.getTime()) ? undefined : parsedDate;
@@ -481,6 +501,58 @@ const normalizeTaskPriority = (value: string | undefined) => {
   const priority = value?.trim().toUpperCase();
 
   return priority && priority in Priority ? (priority as Priority) : Priority.MEDIUM;
+};
+
+const normalizePriority = (value: string | undefined) => {
+  const normalized = value?.trim().toLowerCase();
+
+  if (!normalized) return undefined;
+  if (normalized.includes("urgent")) return Priority.URGENT;
+  if (normalized.includes("high")) return Priority.HIGH;
+  if (normalized.includes("medium")) return Priority.MEDIUM;
+  if (normalized.includes("low")) return Priority.LOW;
+
+  return undefined;
+};
+
+const normalizeProjectStatus = (value: string | undefined) => {
+  const normalized = value?.trim().toLowerCase().replace(/[\s-]+/g, "_");
+
+  if (!normalized) return undefined;
+  if (normalized.includes("active")) return ProjectStatus.ACTIVE;
+  if (normalized.includes("planning")) return ProjectStatus.PLANNING;
+  if (normalized.includes("hold") || normalized.includes("waiting")) {
+    return ProjectStatus.ON_HOLD;
+  }
+  if (normalized.includes("complete")) return ProjectStatus.COMPLETED;
+  if (normalized.includes("cancel")) return ProjectStatus.CANCELLED;
+
+  return undefined;
+};
+
+const findPriorityInSegments = (segments: string[]) => {
+  const explicitPriority = normalizePriority(getSegmentValue(segments, "priority"));
+
+  if (explicitPriority) return explicitPriority;
+
+  return segments.map(normalizePriority).find(Boolean);
+};
+
+const findDateInSegments = (segments: string[]) => {
+  const explicitDueDate = parseDateValue(getSegmentValue(segments, "due"));
+
+  if (explicitDueDate) return explicitDueDate;
+
+  for (const segment of segments) {
+    const match = segment.match(
+      /\b(?:due\s+)?(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|[0-9]{4}-[0-9]{2}-[0-9]{2})\b/i,
+    );
+    const date = parseDateValue(match?.[1]);
+
+    if (date) return date;
+  }
+
+  return undefined;
 };
 
 const createTaskFromCommand = async (args: string) => {
@@ -499,8 +571,10 @@ const createTaskFromCommand = async (args: string) => {
     title,
     description: null,
     status: TaskStatus.TODO,
-    priority: normalizeTaskPriority(getSegmentValue(segments, "priority")),
-    dueDate: parseDateValue(getSegmentValue(segments, "due")),
+    priority:
+      findPriorityInSegments(segments) ??
+      normalizeTaskPriority(getSegmentValue(segments, "priority")),
+    dueDate: findDateInSegments(segments),
     completedAt: undefined,
     projectId: project.id,
     assignedToId: user?.id ?? null,
@@ -517,14 +591,23 @@ const createTaskFromCommand = async (args: string) => {
 
 const parsePaymentAmount = (segments: string[]) => {
   const explicitAmount = getSegmentValue(segments, "amount");
-  const amount = explicitAmount ?? segments[0]?.match(/\b\d+(?:\.\d{1,2})?\b/)?.[0];
+  const amount =
+    explicitAmount ??
+    segments
+      .join(" ")
+      .match(/\b\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?\b|\b\d+(?:\.\d{1,2})?\b/)?.[0]
+      ?.replace(/,/g, "");
 
   return amount && !Number.isNaN(Number(amount)) ? amount : null;
 };
 
 const getDueValue = (segments: string[]) =>
   getSegmentValue(segments, "due") ??
-  segments[0]?.match(/\bdue\s+([0-9]{4}-[0-9]{2}-[0-9]{2}|today|tomorrow)\b/i)?.[1];
+  segments
+    .join(", ")
+    .match(
+      /\bdue\s+([0-9]{4}-[0-9]{2}-[0-9]{2}|today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i,
+    )?.[1];
 
 const parseProviderName = (segments: string[]) => {
   const explicitProvider = getSegmentValue(segments, "provider");
@@ -535,7 +618,7 @@ const parseProviderName = (segments: string[]) => {
 
   return firstSegment
     .replace(/\bdue\s+([0-9]{4}-[0-9]{2}-[0-9]{2}|today|tomorrow)\b/gi, "")
-    .replace(/\b\d+(?:\.\d{1,2})?\b/g, "")
+    .replace(/\$?\b\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?\b|\$?\b\d+(?:\.\d{1,2})?\b/g, "")
     .trim();
 };
 
@@ -556,7 +639,7 @@ const createPaymentFromCommand = async (args: string) => {
     amount,
     currency: "USD",
     status: PaymentStatus.PENDING,
-    dueDate: parseDateValue(getDueValue(segments)),
+    dueDate: parseDateValue(getDueValue(segments)) ?? findDateInSegments(segments),
     paidAt: undefined,
     projectId: project.id,
     providerName,
@@ -567,6 +650,65 @@ const createPaymentFromCommand = async (args: string) => {
     `Project: ${payment.project.name}`,
     `Status: ${payment.status}`,
     `Due: ${formatDate(payment.dueDate)}`,
+  ].join("\n");
+};
+
+const createProjectFromCommand = async (args: string) => {
+  const segments = parseSegments(args);
+  const name = segments[0]?.trim();
+
+  if (!name) {
+    return "Usage: /addproject Project Name, active, high priority, important notes";
+  }
+
+  const status = segments.map(normalizeProjectStatus).find(Boolean) ?? ProjectStatus.ACTIVE;
+  const priority = findPriorityInSegments(segments) ?? Priority.MEDIUM;
+  const notes = segments.slice(1).join(", ");
+  const project = await projectService.create({
+    name,
+    description: notes || null,
+    status,
+    priority,
+    budget: undefined,
+    startDate: undefined,
+    dueDate: findDateInSegments(segments),
+    completedAt: undefined,
+  });
+
+  return [
+    `Project created: ${project.name}`,
+    `Status: ${project.status}`,
+    `Priority: ${project.priority}`,
+    `Due: ${formatDate(project.dueDate)}`,
+  ].join("\n");
+};
+
+const createProviderFromCommand = async (args: string) => {
+  const segments = parseSegments(args);
+  const name = segments[0]?.trim();
+
+  if (!name) {
+    return "Usage: /addprovider Company Name, service type, contact info, notes";
+  }
+
+  const details = segments.slice(1);
+  const detailsText = details.join(" ");
+  const email = detailsText.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i)?.[0];
+  const phone = detailsText.match(
+    /\b(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}\b/,
+  )?.[0];
+  const provider = await providerService.create({
+    name,
+    contactName: null,
+    email: email ?? null,
+    phone: phone ?? null,
+    notes: details.length ? details.join(", ") : null,
+  });
+
+  return [
+    `Provider created: ${provider.name}`,
+    `Contact: ${provider.email ?? provider.phone ?? "No contact saved"}`,
+    `Notes: ${truncate(provider.notes ?? "No notes", 120)}`,
   ].join("\n");
 };
 
@@ -597,7 +739,13 @@ const runCommand = async ({ command, args }: ParsedCommand): Promise<HandlerResu
     case "start":
       return { action: "COMMAND_START", response: formatWelcome() };
     case "help":
-      return { action: "COMMAND_HELP", response: formatCommandHelp() };
+      return { action: "COMMAND_HELP", response: getHelpMessage() };
+    case "guide":
+      return { action: "COMMAND_GUIDE", response: getGuideMessages() };
+    case "manual":
+      return { action: "COMMAND_MANUAL", response: getGuideMessages() };
+    case "instructions":
+      return { action: "COMMAND_INSTRUCTIONS", response: getGuideMessages() };
     case "projects":
       return { action: "COMMAND_PROJECTS", response: await formatActiveProjects() };
     case "tasks":
@@ -618,6 +766,16 @@ const runCommand = async ({ command, args }: ParsedCommand): Promise<HandlerResu
       return {
         action: "COMMAND_ADDPAYMENT",
         response: await createPaymentFromCommand(args),
+      };
+    case "addproject":
+      return {
+        action: "COMMAND_ADDPROJECT",
+        response: await createProjectFromCommand(args),
+      };
+    case "addprovider":
+      return {
+        action: "COMMAND_ADDPROVIDER",
+        response: await createProviderFromCommand(args),
       };
     case "status":
       return { action: "COMMAND_STATUS", response: await formatSystemStatus() };
@@ -646,7 +804,8 @@ const runIntent = async (text: string, intent: Intent): Promise<HandlerResult> =
     default:
       return {
         action: "INTENT_UNKNOWN",
-        response: "I am not sure yet. Try /help, /tasks, /today, or /report.",
+        response:
+          "I am not sure yet. Type /help for quick commands or /guide for full instructions.",
       };
   }
 };
@@ -675,7 +834,7 @@ const logActivity = async ({
           message: truncate(text, 500),
           chatId: source?.chatId ? String(source.chatId) : undefined,
           username: source?.username,
-          response: result ? truncate(result.response, 1000) : undefined,
+          response: result ? truncate(responseText(result.response), 1000) : undefined,
           error:
             error instanceof Error
               ? truncate(error.message, 500)
@@ -713,9 +872,8 @@ export const handleTelegramText = async (
       : isSlashCommand(text)
         ? {
             action: "COMMAND_UNSUPPORTED",
-            response: `Unsupported command. Try /help. Recognized commands: ${commandList
-              .map((definition) => definition.command)
-              .join(", ")}`,
+            response:
+              "I don't recognize that command yet.\nType /help for quick commands or /guide for full instructions.",
           }
         : await runIntent(text, classifyIntent(text));
 
@@ -734,7 +892,9 @@ export const getTelegramCommandSupportMatrix = () =>
     command: definition.command,
     backendImplemented: true,
     requiresOpenAI: definition.requiresOpenAI,
-    databaseUsed: !["/start", "/help"].includes(definition.command),
+    databaseUsed: !["/start", "/help", "/guide", "/manual", "/instructions"].includes(
+      definition.command,
+    ),
     notes:
       definition.command === "/documents"
         ? "Lists document records from the database. Natural-language document questions use OpenAI file search."

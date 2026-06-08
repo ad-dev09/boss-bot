@@ -101,6 +101,8 @@ Local development runs the API only by default. To test the bot locally, first s
 
 When `TELEGRAM_MANAGER_CHAT_ID` is empty, the bot allows messages only in development mode so you can discover your chat ID safely.
 
+Telegram users can type `/help` for a short command cheat sheet or `/guide` for the full manager training guide. `/manual` and `/instructions` show the same full guide.
+
 ## Production Runtime
 
 Render is the production backend.

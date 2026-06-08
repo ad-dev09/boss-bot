@@ -13,6 +13,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
     "prisma:studio": "prisma studio",
+    "telegram:commands": "tsx scripts/check-telegram-commands.ts",
     "test": "npm run typecheck"
   },
   "keywords": [],
