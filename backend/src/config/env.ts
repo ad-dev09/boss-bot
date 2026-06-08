@@ -12,10 +12,11 @@ const envSchema = z.object({
   OPENAI_MODEL: z.string().trim().min(1),
   OPENAI_VECTOR_STORE_ID: z.string().trim().min(1),
   JWT_SECRET: z.string().trim().min(1),
-  TELEGRAM_BOT_TOKEN: z.string().trim().min(1),
-  TELEGRAM_MANAGER_CHAT_ID: z.string().trim().min(1),
+  TELEGRAM_BOT_TOKEN: z.string().trim().default(""),
+  TELEGRAM_MANAGER_CHAT_ID: z.string().trim().default(""),
   TELEGRAM_WEBHOOK_URL: z.string().trim().default(""),
   TELEGRAM_ALLOWED_USER_IDS: z.string().trim().default(""),
+  ENABLE_TELEGRAM_BOT: z.string().trim().default("false"),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
@@ -28,6 +29,7 @@ if (!parsedEnv.success) {
 
 export const env = {
   ...parsedEnv.data,
+  ENABLE_TELEGRAM_BOT: parsedEnv.data.ENABLE_TELEGRAM_BOT === "true",
   CORS_ORIGINS: parsedEnv.data.CORS_ORIGIN.split(",")
     .map((origin) => origin.trim())
     .filter(Boolean),

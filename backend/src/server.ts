@@ -9,7 +9,21 @@ const server = app.listen(env.PORT, HOST, () => {
   console.log(`ManagerOps backend is running on ${HOST}:${env.PORT}`);
 });
 
-const bot = await startTelegramBot();
+const bot = env.ENABLE_TELEGRAM_BOT
+  ? await (async () => {
+      if (!env.TELEGRAM_BOT_TOKEN) {
+        console.error("Telegram bot polling is enabled but TELEGRAM_BOT_TOKEN is missing.");
+        process.exit(1);
+      }
+
+      console.log("Telegram bot polling enabled. Starting bot...");
+      return startTelegramBot();
+    })()
+  : null;
+
+if (!env.ENABLE_TELEGRAM_BOT) {
+  console.log("Telegram bot polling disabled. API server is running only.");
+}
 
 const shutdown = async (signal: string) => {
   console.log(`${signal} received. Shutting down ManagerOps backend...`);

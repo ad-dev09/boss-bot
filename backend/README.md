@@ -16,7 +16,21 @@ Node.js, Express, TypeScript, and Prisma backend for the ManagerOps AI Assistant
    cp .env.example .env
    ```
 
-3. Update `.env` with your Supabase `DATABASE_URL`. Add `OPENAI_API_KEY`, `TELEGRAM_BOT_TOKEN`, and `TELEGRAM_ALLOWED_USER_IDS` when those integrations are enabled.
+3. Update `.env` with your Supabase `DATABASE_URL` and `DIRECT_URL`. Add `OPENAI_API_KEY`, `TELEGRAM_BOT_TOKEN`, and `TELEGRAM_ALLOWED_USER_IDS` when those integrations are enabled.
+
+   For Supabase shared pooler URLs, the username must include the project ref:
+
+   ```bash
+   DATABASE_URL="postgresql://postgres.[PROJECT_REF]:[DATABASE_PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres"
+   ```
+
+   For Prisma migrations/introspection, prefer the direct connection when your network supports it:
+
+   ```bash
+   DIRECT_URL="postgresql://postgres:[DATABASE_PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres"
+   ```
+
+   If direct IPv6 is unavailable locally, use the Supabase session pooler on port `5432` for `DIRECT_URL`.
 
 4. Generate the Prisma client:
 
@@ -80,11 +94,46 @@ Add your bot token to `.env`:
 ```bash
 TELEGRAM_BOT_TOKEN="your_bot_token"
 TELEGRAM_MANAGER_CHAT_ID=""
+ENABLE_TELEGRAM_BOT=false
 ```
 
-Start the backend with `npm run dev`, send `/start` to your Telegram bot, then copy the `Telegram chat ID` printed in the terminal. Add that value to `.env` as `TELEGRAM_MANAGER_CHAT_ID`.
+Local development runs the API only by default. To test the bot locally, first stop or suspend the Render service, or use a separate development Telegram bot token. Then set `ENABLE_TELEGRAM_BOT=true`, start the backend with `npm run dev`, send `/start` to your Telegram bot, and copy the `Telegram chat ID` printed in the terminal. Add that value to `.env` as `TELEGRAM_MANAGER_CHAT_ID`.
 
 When `TELEGRAM_MANAGER_CHAT_ID` is empty, the bot allows messages only in development mode so you can discover your chat ID safely.
+
+## Production Runtime
+
+Render is the production backend.
+
+Render runs:
+
+- Express/API server
+- Telegram bot polling
+
+Localhost is only for development.
+
+Localhost runs:
+
+- Express/API server only
+- Telegram bot polling disabled by default
+
+Required Render environment variable:
+
+```bash
+ENABLE_TELEGRAM_BOT=true
+```
+
+Required local development environment variable:
+
+```bash
+ENABLE_TELEGRAM_BOT=false
+```
+
+Telegram polling/getUpdates only allows one active polling process per bot token. If Render and localhost both run the same bot token, Telegram returns a 409 Conflict.
+
+If local bot testing is needed, stop or suspend the Render service first, set `ENABLE_TELEGRAM_BOT=false` on Render temporarily, or use a separate development Telegram bot token.
+
+If instant production responses are required, use an always-on Render service plan. Free web services may spin down after inactivity and cause delayed first responses.
 
 ## Prisma Commands
 

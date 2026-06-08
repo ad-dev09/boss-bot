@@ -40,6 +40,9 @@ type ParsedCommand = {
 
 type TaskFilter = "all" | "today" | "overdue" | "blocked" | "completed";
 
+const activityLogRetryDelayMs = 60_000;
+let activityLogSuspendedUntil = 0;
+
 const projectMetaPrefix = "[managerops-project-meta]";
 const providerMetaPrefix = "[managerops-provider-meta]";
 const documentMetaPrefix = "[managerops-document-meta]";
@@ -78,6 +81,21 @@ const formatMoney = (
 
 const truncate = (value: string, maxLength = 80) =>
   value.length > maxLength ? `${value.slice(0, maxLength - 3)}...` : value;
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : String(error);
+
+const isPrismaConnectionError = (error: unknown) => {
+  const message = getErrorMessage(error);
+
+  return (
+    message.includes("PrismaClientInitializationError") ||
+    message.includes("Error querying the database") ||
+    message.includes("tenant/user") ||
+    message.includes("Can't reach database server") ||
+    message.includes("Timed out fetching a new connection")
+  );
+};
 
 const parseMetadata = (value: string | null | undefined, prefix: string) => {
   if (!value?.startsWith(prefix)) return {};
@@ -644,6 +662,10 @@ const logActivity = async ({
   result?: HandlerResult;
   error?: unknown;
 }) => {
+  const now = Date.now();
+
+  if (now < activityLogSuspendedUntil) return;
+
   try {
     await prisma.activityLog.create({
       data: {
@@ -664,7 +686,19 @@ const logActivity = async ({
       },
     });
   } catch (logError) {
-    console.error("Failed to save Telegram activity log:", logError);
+    const message = getErrorMessage(logError);
+
+    if (isPrismaConnectionError(logError)) {
+      activityLogSuspendedUntil = now + activityLogRetryDelayMs;
+      console.warn(
+        `Telegram activity logging paused for ${Math.round(
+          activityLogRetryDelayMs / 1000,
+        )}s because Prisma cannot connect to the database: ${truncate(message, 300)}`,
+      );
+      return;
+    }
+
+    console.warn(`Failed to save Telegram activity log: ${truncate(message, 300)}`);
   }
 };
 
